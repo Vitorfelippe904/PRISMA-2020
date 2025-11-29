@@ -15,12 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxt-dev \
     libv8-dev \
     pandoc \
-    chromium \
+    chromium-browser \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Configura chromium para webshot2
-ENV CHROMOTE_CHROME=/usr/bin/chromium
+ENV CHROMOTE_CHROME=/usr/bin/chromium-browser
 
 # Instala pacotes R
 RUN R -e "install.packages('jsonlite', repos='https://cloud.r-project.org')"
