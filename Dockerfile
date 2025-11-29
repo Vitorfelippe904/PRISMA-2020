@@ -1,4 +1,4 @@
-FROM rocker/r-base:4.3.1
+FROM rocker/r-ver:4.3.2
 
 # Instala dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -6,26 +6,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libxml2-dev \
     libsodium-dev \
-    make \
-    gcc \
-    g++ \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala pacotes R com verificação de erro
-RUN R -e "install.packages(c('plumber', 'jsonlite', 'base64enc'), repos='https://cloud.r-project.org', dependencies=TRUE)" \
-    && R -e "if (!requireNamespace('plumber', quietly=TRUE)) quit(status=1)"
+# Instala pacotes R
+RUN R -e "install.packages('jsonlite', repos='https://cloud.r-project.org')"
+RUN R -e "install.packages('base64enc', repos='https://cloud.r-project.org')"
+RUN R -e "install.packages('plumber', repos='https://cloud.r-project.org', dependencies=TRUE)"
 
-# Cria diretório de trabalho
+# Verifica instalação
+RUN R -e "library(plumber); cat('Plumber OK\n')"
+
 WORKDIR /app
-
-# Copia os arquivos da API
 COPY api.R /app/api.R
 
-# Railway usa variável PORT
 ENV PORT=8000
-
 EXPOSE ${PORT}
 
-# Comando de inicialização
-CMD R -e "library(plumber); pr <- plumb('api.R'); pr\$run(host='0.0.0.0', port=as.numeric(Sys.getenv('PORT', 8000)))"
+CMD ["sh", "-c", "R -e \"library(plumber); pr <- plumb('api.R'); pr\\$run(host='0.0.0.0', port=as.numeric(Sys.getenv('PORT', 8000)))\""]
