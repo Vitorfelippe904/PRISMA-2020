@@ -1,26 +1,31 @@
-FROM rocker/r-ver:4.3.1
+FROM rocker/r-base:4.3.1
 
-# Instala dependências do sistema necessárias para o plumber e PRISMA2020
-RUN apt-get update && apt-get install -y \
+# Instala dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev \
+    libsodium-dev \
+    make \
+    gcc \
+    g++ \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala os pacotes R
-RUN R -e "install.packages( \
-    c('plumber', 'jsonlite', 'base64enc', 'PRISMA2020'), \
-    repos = 'https://cloud.r-project.org' \
-)"
+# Instala pacotes R com verificação de erro
+RUN R -e "install.packages(c('plumber', 'jsonlite', 'base64enc'), repos='https://cloud.r-project.org', dependencies=TRUE)" \
+    && R -e "if (!requireNamespace('plumber', quietly=TRUE)) quit(status=1)"
 
-# Define a pasta do app
+# Cria diretório de trabalho
 WORKDIR /app
 
 # Copia os arquivos da API
-COPY api.R prisma_cli.R ./
+COPY api.R /app/api.R
 
-# Expõe a porta
-EXPOSE 8000
+# Railway usa variável PORT
+ENV PORT=8000
 
-# Comando para iniciar a API
-CMD ["R", "-e", "pr <- plumber::plumb('api.R'); pr$run(host='0.0.0.0', port=8000)"]
+EXPOSE ${PORT}
+
+# Comando de inicialização
+CMD R -e "library(plumber); pr <- plumb('api.R'); pr\$run(host='0.0.0.0', port=as.numeric(Sys.getenv('PORT', 8000)))"
