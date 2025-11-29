@@ -1,76 +1,34 @@
-# 📊 PRISMA-2020 API  
-API em R (Plumber) para geração automatizada de fluxogramas PRISMA 2020 a partir de dados estruturados.  
-Ideal para pipelines de Revisões Sistemáticas, Meta-Análises, RAG científico e automações no n8n.
+# 📊 PRISMA-2020 API
 
----
+API em R (Plumber) para geração automatizada de fluxogramas PRISMA 2020 oficiais.
 
-## 🚀 1. Objetivo
+## 🚀 Deploy no Railway
 
-Esta API recebe um JSON contendo os números do fluxograma PRISMA (identificação, triagem, elegibilidade e inclusão) e gera:
+1. Faça fork/clone deste repositório
+2. No Railway: **New Project → Deploy from GitHub**
+3. Aguarde o build (pode levar ~5-10 min na primeira vez)
+4. Em **Settings → Networking → Generate Domain**
+5. Teste: `https://seu-dominio.up.railway.app/health`
 
-- 📄 **Fluxograma PRISMA completo** (PNG ou PDF)  
-- 🔢 **Tabela PRISMA estruturada**  
-- 🧬 **Retorno em Base64** (compatível com n8n, Supabase, WhatsApp bots, Assistants e pipelines automatizados)
+## 📡 Endpoints
 
-A API é deployada via **Docker + Railway**.
-
----
-
-## 📦 2. Estrutura do Repositório
-├── Dockerfile          # Define a imagem e o ambiente
-├── api.R               # Rotas da API (Plumber)
-├── prisma_cli.R        # Lógica de gerar o fluxograma PRISMA
-├── example.json        # Exemplo de payload
-└── README.md           # Este arquivo
----
-
-## 🛠️ 3. Requisitos
-
-### Local
-- R ≥ 4.2
-- Pacotes: `plumber`, `jsonlite`, `PRISMA2020`, `base64enc`
-- Docker (opcional para rodar local via container)
-
-### Produção (Railway)
-O Dockerfile já define:
-- Instalação dos pacotes R  
-- Exposição da porta `8000`  
-- Execução da API em `/usr/local/bin/R -f api.R`  
-
----
-
-## ⚙️ 4. Como rodar LOCALMENTE
-
-### 4.1 Sem Docker
+### `GET /health`
+Verifica se a API está online.
 
 ```bash
-Rscript api.R
-A API iniciará em:
-[A API iniciará em:](http://localhost:8000)
+curl https://seu-dominio.up.railway.app/health
+```
 
-4.2 Com Docker
-docker build -t prisma-api .
-docker run -p 8000:8000 prisma-api
+Resposta:
+```json
+{"status": "ok", "timestamp": "2025-01-01 12:00:00"}
+```
 
-🌐 5. Deploy no Railway
-	1.	Suba TODOS os arquivos no GitHub
-	2.	No Railway, escolha “Deploy from GitHub repo”
-	3.	Railway detectará o Dockerfile automaticamente
-	4.	Gere um domínio público em:
-Settings → Networking → Generate Domain
-	5.	Verifique em /health
+### `POST /generate-prisma-simple`
+Versão simplificada - ideal para a maioria dos casos.
 
-🧪 6. Endpoints
-
-🔍 GET /health
-
-Verifica se a API está online.
-{ "status": "ok" }
-🟦 POST /generate-prisma
-
-Gera o fluxograma PRISMA 2020.
-
-Payload JSON
+**Payload:**
+```json
 {
   "identified": 450,
   "after_duplicates": 380,
@@ -78,32 +36,55 @@ Payload JSON
   "excluded": 300,
   "full_text": 80,
   "excluded_fulltext": 50,
-  "studies_included": 30
+  "studies_included": 30,
+  "format": "png"
 }
+```
+
+**Exemplo curl:**
+```bash
+curl -X POST https://seu-dominio.up.railway.app/generate-prisma-simple \
+  -H "Content-Type: application/json" \
+  -d @example.json
+```
+
+**Resposta:**
+```json
 {
-  "identified": 450,
-  "after_duplicates": 380,
-  "screened": 380,
-  "excluded": 300,
-  "full_text": 80,
-  "excluded_fulltext": 50,
-  "studies_included": 30
-}
-Resposta
-{
-  "base64": "<string>",
+  "success": true,
+  "base64": "iVBORw0KGgo...",
   "format": "png",
-  "success": true
+  "message": "Fluxograma PRISMA gerado com sucesso"
 }
-🧪 7. Exemplo em CURL
-curl -X POST YOUR-RAILWAY-URL/generate-prisma \
--H "Content-Type: application/json" \
--d @example.json
+```
 
-🐍 8. Exemplo em Python
+### `POST /generate-prisma`
+Versão completa com todos os campos PRISMA 2020.
+
+**Payload:**
+```json
+{
+  "identified": 500,
+  "duplicates": 50,
+  "screened": 450,
+  "excluded_screening": 350,
+  "sought_retrieval": 100,
+  "not_retrieved": 5,
+  "assessed_eligibility": 95,
+  "excluded_reasons": {"Sem desfecho": 30, "População errada": 15, "Sem comparador": 10},
+  "included_studies": 40,
+  "included_reports": 45,
+  "format": "png"
+}
+```
+
+## 🐍 Exemplo Python
+
+```python
 import requests
+import base64
 
-url = "https://prisma-2020-production.up.railway.app/generate-prisma"
+url = "https://seu-dominio.up.railway.app/generate-prisma-simple"
 
 payload = {
     "identified": 450,
@@ -112,44 +93,67 @@ payload = {
     "excluded": 300,
     "full_text": 80,
     "excluded_fulltext": 50,
-    "studies_included": 30
+    "studies_included": 30,
+    "format": "png"
 }
 
-r = requests.post(url, json=payload)
-img_b64 = r.json()["base64"]
+response = requests.post(url, json=payload)
+data = response.json()
 
-# salva o PNG
-import base64
-with open("prisma.png", "wb") as f:
-    f.write(base64.b64decode(img_b64))
-🤖 9. Uso no n8n (exemplo JSON)
+if data["success"]:
+    with open("prisma.png", "wb") as f:
+        f.write(base64.b64decode(data["base64"]))
+    print("Salvo: prisma.png")
+else:
+    print(f"Erro: {data['error']}")
+```
+
+## 🤖 Exemplo n8n
+
+```json
 {
-  "url": "https://prisma-2020-production.up.railway.app/generate-prisma",
   "method": "POST",
-  "json": {
-    "identified": {{$json.identified}},
-    "after_duplicates": {{$json.after_duplicates}},
-    "screened": {{$json.screened}},
-    "excluded": {{$json.excluded}},
-    "full_text": {{$json.full_text}},
-    "excluded_fulltext": {{$json.excluded_fulltext}},
-    "studies_included": {{$json.studies_included}}
+  "url": "https://seu-dominio.up.railway.app/generate-prisma-simple",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "identified": "={{ $json.identified }}",
+    "after_duplicates": "={{ $json.after_duplicates }}",
+    "screened": "={{ $json.screened }}",
+    "excluded": "={{ $json.excluded }}",
+    "full_text": "={{ $json.full_text }}",
+    "excluded_fulltext": "={{ $json.excluded_fulltext }}",
+    "studies_included": "={{ $json.studies_included }}",
+    "format": "png"
   }
 }
-🙋‍♂️ 12. Autor
+```
 
-Dr. Vitor Alves Felippe
-Automação científica | IA aplicada | Meta-análises automatizadas | Anestesia & Pesquisa
+## 📁 Estrutura
+
+```
+├── Dockerfile      # Imagem Docker com R + PRISMA2020
+├── api.R           # API Plumber
+├── example.json    # Payload de exemplo
+└── README.md
+```
+
+## 🔧 Rodar localmente
+
+```bash
+# Com Docker
+docker build -t prisma-api .
+docker run -p 8000:8000 prisma-api
+
+# Sem Docker (requer R instalado)
+Rscript -e "plumber::plumb('api.R')\$run(host='0.0.0.0', port=8000)"
+```
+
+## 📝 Licença
+
+MIT
+
 ---
 
-# ✅ Pronto para subir no GitHub
-
-Se quiser, posso também:
-
-✔ Gerar **badges** (build, version, uptime, Docker pulls)  
-✔ Criar **example.json completo**  
-✔ Criar **README em inglês**  
-✔ Criar **versão com pkgdown**  
-✔ Criar **versão para publicar como pacote CRAN no futuro**  
-
-Só pedir!
+**Autor:** Dr. Vitor Alves Felippe
