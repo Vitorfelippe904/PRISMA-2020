@@ -1,0 +1,16 @@
+{
+  "identified": 450,
+  "duplicates": 70,
+  "screened": 380,
+  "excluded_screening": 300,
+  "sought_retrieval": 80,
+  "not_retrieved": 5,
+  "assessed_eligibility": 75,
+  "excluded_fulltext": 45,
+  "exclusion_reasons": {
+    "Sem desfecho primário": 20,
+    "População inadequada": 15,
+    "Desenho inadequado": 10
+  },
+  "included_studies": 30
+}
